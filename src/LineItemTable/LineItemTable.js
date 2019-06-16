@@ -16,6 +16,7 @@ function LineItemTable(props) {
           <th>Details</th>
           <th>Quantity</th>
           <th>Unit Price</th>
+          <th>Taxed</th>
           <th>Total</th>
         </tr>
       </thead>
@@ -26,6 +27,7 @@ function LineItemTable(props) {
         {selectedLineItems.length === 0 && (
           <tr>
             <td>No line items specified.</td>
+            <td></td>
             <td></td>
             <td></td>
             <td></td>

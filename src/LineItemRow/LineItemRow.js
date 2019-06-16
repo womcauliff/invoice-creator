@@ -1,5 +1,5 @@
 import React from 'react';
-import { $, in$ } from 'moneysafe';
+import { in$ } from 'moneysafe';
 import useLineItemRowHook from './useLineItemRowHook';
 import './LineItemRow.css';
 
@@ -8,11 +8,20 @@ import './LineItemRow.css';
  */
 function LineItemRow(props) {
   const { saveLineItem, item: parentItem } = props;
-  const { item, details, quantity, price, in_stock } = parentItem;
+  const {
+    item,
+    details,
+    quantity,
+    price,
+    itemTotal,
+    in_stock,
+    is_taxable,
+  } = parentItem;
 
-  // Generate moneysafe calculations of values
-  const unitPrice = `$${in$($(price)).toFixed(2)}`;
-  const total = `$${in$(quantity * $(price)).toFixed(2)}`;
+  // Format strings
+  const unitPrice = `$${price.toFixed(2)}`;
+  // Transform moneysafe calculation from cents into dollars for display.
+  const total = `$${in$(itemTotal).toFixed(2)}`;
 
   const [{ status, inputValue }, dispatch, inputRef] = useLineItemRowHook();
 
@@ -60,6 +69,7 @@ function LineItemRow(props) {
         )}
       </td>
       <td>{unitPrice}</td>
+      <td>{is_taxable && <>&#10003;</>}</td>
       <td>{total}</td>
     </tr>
   );
