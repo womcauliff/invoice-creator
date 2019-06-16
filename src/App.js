@@ -9,6 +9,7 @@ import {
   FormGroup,
   Table,
 } from 'reactstrap';
+import { $, in$ } from 'moneysafe';
 import './App.css';
 import getItems from './utils/getItems';
 
@@ -34,9 +35,10 @@ function reducer(state, action) {
     case 'POPULATE_LINE_ITEMS':
       return {
         ...state,
-        lineItems: action.lineItemsAPI.map(lineItem => ({
+        lineItems: action.lineItemsAPI.map((lineItem, index) => ({
           ...lineItem,
           quantity: 0,
+          // price: index % 2 === 0 ? 7.11 : 0.3,
         })),
       };
     case 'OPEN_SELECTION_MODAL':
@@ -86,8 +88,9 @@ function reducer(state, action) {
       throw new Error();
   }
 }
+
 const SALESTAX = 0.07;
-function App() {
+export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   function openModal() {
@@ -146,19 +149,14 @@ function App() {
   }, []);
 
   const { lineItems, selectionModalStatus } = state;
-  const selectedLineItems = lineItems.filter(({ selected }) => selected);
-  const subTotal = selectedLineItems.reduce(
-    (subTotal, { price, quantity }) => subTotal + price * quantity,
-    0
-  );
-  const taxableTotal = selectedLineItems
-    .filter(({ is_taxable }) => is_taxable)
-    .reduce(
-      (taxableTotal, { price, quantity }) => taxableTotal + price * quantity,
+  const [
+    subTotal,
+    taxableSubTotal,
+    selectedLineItems,
+  ] = calculateInvoiceSubtotals(lineItems);
+  const tax = taxableSubTotal * SALESTAX;
+  const grandTotal = subTotal.add(tax);
 
-      0
-    );
-  const tax = taxableTotal * SALESTAX;
   return (
     <Container>
       <div className="py-5 text-center">
@@ -177,16 +175,16 @@ function App() {
             <tbody>
               <tr>
                 <th scope="row">Subtotal</th>
-                <td>{`$${subTotal.toFixed(2)}`}</td>
+                <td>{`$${in$(subTotal).toFixed(2)}`}</td>
               </tr>
               <tr>
                 <th scope="row">Tax ({(SALESTAX * 100).toFixed(2) + '%'})</th>
-                <td>{`$${tax.toFixed(2)}`}</td>
+                <td>{`$${in$(tax).toFixed(2)}`}</td>
               </tr>
 
               <tr>
                 <th scope="row">Total</th>
-                <td>{`$${(subTotal + tax).toFixed(2)}`}</td>
+                <td>{`$${in$(grandTotal).toFixed(2)}`}</td>
               </tr>
             </tbody>
           </Table>
@@ -221,4 +219,48 @@ function App() {
   );
 }
 
-export default App;
+/**
+ * Calculates the subtotals of the selected line items on an invoice.
+ * @param lineItems The array of available invoice line items.
+ * @returns The result array contains three elements:
+ * - [0] The calculated subtotal of **selected** line items, in Money object form.
+ * - [1] The calculated subtotal of **selected** and **taxable** line items, in Money object form.
+ * - [2] Array of **selected** line items, which each item containing its calculated total in cents.
+ */
+function calculateInvoiceSubtotals(lineItems) {
+  return lineItems.reduce(
+    (acc, currentItem) => {
+      const [subTotal, taxableSubTotal, selectedLineItems] = acc;
+      const { selected, price, quantity, is_taxable } = currentItem;
+
+      // Only calculate invoice values using selected line items.
+      if (!selected) {
+        // Ignore line items which are not selected
+        return acc;
+      }
+
+      // Using moneysafe lib, calculate total (in cents)
+      const itemTotal = $(price) * quantity;
+
+      // Update accumulator
+      return [
+        // Add current item total to overall selected item subtotal
+        subTotal.add(itemTotal),
+
+        // If the selected line item is also taxable
+        // Add current item total to overall taxable item subtotal
+        is_taxable ? taxableSubTotal.add(itemTotal) : taxableSubTotal,
+
+        // Add current item (with calculated total) to selected line items array
+        [
+          ...selectedLineItems,
+          {
+            ...currentItem,
+            itemTotal,
+          },
+        ],
+      ];
+    },
+    [$(0), $(0), []]
+  );
+}
