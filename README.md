@@ -4,6 +4,8 @@ This is a client-side application to create invoices.
 
 ## Layout of the User Interface
 
+### Adding Line Items
+
 Each line item of the invoice is displayed within a table. Of course, this table will initially be empty, but clicking the "Add Line Item(s)" button will open a modal which allows the user to select which line items should be added.
 
 This application retrieves all available line items from the backend API. From these available line items, the user may select which line items they will charge their customer.
@@ -11,6 +13,14 @@ This application retrieves all available line items from the backend API. From t
 Immediately beneath the line items table is a second table in which the subtotal, tax, and total are calculated automatically according to the quantities and unit prices of the line items above.
 
 The user may change the quantity for a selected line item in the table by clicking on the table cell and typing in the new quantity value (the application validates user input, ignoring any updates to quantity that are negative numbers, or not a number at all).
+
+### Submitting Invoices
+
+On page load, the line item table will be empty. To prevent the submission of invoice with no selected line items, the button to submit the invoice to the API is disabled. After one or more line items have been selected, the button is enabled.
+
+Once the submit button is clicked, the button's text changes to "Submitting Invoice... ", and it remains disabled while the `POST` request to the API is in-flight.
+
+If the `POST` request is successful, the line item table data is cleared so that the interface is ready for the user to begin creating a new invoice. However, if the API request fails, the table data is left as is, so that the user may attempt to re-submit the invoice.
 
 ## Technologies
 
