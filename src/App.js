@@ -11,10 +11,11 @@ import {
 } from 'reactstrap';
 import { $, in$ } from 'moneysafe';
 import './App.css';
-import getItems from './utils/getItems';
+import { getItems, postInvoice } from './utils';
 
 import SelectLineItemsModal from './SelectLineItemsModal';
 import LineItemTable from './LineItemTable';
+import SubmitInvoiceButton from './SubmitInvoiceButton';
 
 /**
  * Determines if a given value is a valid quantity
@@ -26,6 +27,7 @@ function isValidQuantityValue(quantity) {
 const initialState = {
   selectionModalStatus: 'closed',
   lineItems: [],
+  postingStatus: 'ready',
 };
 /**
  * Reducer for the invoice generator application.
@@ -35,10 +37,11 @@ function reducer(state, action) {
     case 'POPULATE_LINE_ITEMS':
       return {
         ...state,
-        lineItems: action.lineItemsAPI.map((lineItem, index) => ({
+        lineItems: action.lineItemsAPI.map(lineItem => ({
           ...lineItem,
+          selected: false,
+          selectedDraft: false,
           quantity: 0,
-          // price: index % 2 === 0 ? 7.11 : 0.3,
         })),
       };
     case 'OPEN_SELECTION_MODAL':
@@ -84,6 +87,27 @@ function reducer(state, action) {
           };
         }),
       };
+    case 'SUBMIT_INVOICE':
+      return { ...state, postingStatus: 'posting' };
+    case 'POST_IN_FLIGHT':
+      return { ...state, postingStatus: 'inflight' };
+    case 'POST_SUCCEEDED':
+      return {
+        ...state,
+        lineItems: state.lineItems.map(lineItem => ({
+          ...lineItem,
+          // Reset line items, clearing all selections
+          selected: false,
+          selectedDraft: false,
+          quantity: 0,
+        })),
+        postingStatus: 'ready',
+      };
+    case 'POST_FAILED':
+      return {
+        ...state,
+        postingStatus: 'ready',
+      };
     default:
       throw new Error();
   }
@@ -92,6 +116,16 @@ function reducer(state, action) {
 const SALESTAX = 0.07;
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const { lineItems, selectionModalStatus, postingStatus } = state;
+  const [
+    msSubTotal, // in Money object form
+    msTaxableSubTotal, // in Money object form
+    selectedLineItems,
+  ] = calculateInvoiceSubtotals(lineItems);
+  const subTotal = in$(msSubTotal).toFixed(2);
+  const msTax = msTaxableSubTotal * SALESTAX;
+  const tax = in$(msTax).toFixed(2);
+  const grandTotal = in$(msSubTotal.add(msTax)).toFixed(2);
 
   function openModal() {
     dispatch({ type: 'OPEN_SELECTION_MODAL' });
@@ -109,6 +143,10 @@ export default function App() {
       lineItem,
     });
   }
+  function onInvoiceSubmit(e) {
+    e.preventDefault();
+    dispatch({ type: 'SUBMIT_INVOICE' });
+  }
 
   useEffect(() => {
     const fetchLineItems = async () => {
@@ -117,13 +155,7 @@ export default function App() {
         console.log(response, response.data);
         dispatch({
           type: 'POPULATE_LINE_ITEMS',
-          lineItemsAPI: [
-            ...response.data.data.map(lineItem => ({
-              ...lineItem,
-              selected: false,
-              selectedDraft: false,
-            })),
-          ],
+          lineItemsAPI: response.data.data,
         });
       } catch (error) {
         console.log(error);
@@ -146,16 +178,49 @@ export default function App() {
       }
     };
     fetchLineItems();
-  }, []);
+  }, [dispatch]);
 
-  const { lineItems, selectionModalStatus } = state;
-  const [
-    subTotal,
-    taxableSubTotal,
-    selectedLineItems,
-  ] = calculateInvoiceSubtotals(lineItems);
-  const tax = taxableSubTotal * SALESTAX;
-  const grandTotal = subTotal.add(tax);
+  useEffect(() => {
+    // Only post invoice data when in 'posting' state (after user clicks submit button)
+    if (postingStatus === 'posting') {
+      console.log('sending Post');
+      // Update `postingStatus` to `inflight` to prevent multiple POST requests.
+      dispatch({ type: 'POST_IN_FLIGHT' });
+
+      const submitInvoice = async () => {
+        try {
+          const response = await postInvoice(
+            selectedLineItems,
+            tax,
+            subTotal,
+            grandTotal
+          );
+          console.log(response, response.data);
+          dispatch({ type: 'POST_SUCCEEDED' });
+        } catch (error) {
+          console.log(error);
+          if (error.response) {
+            // The request was made and the server responded with a status code
+            // that falls out of the range of 2xx
+            console.log(error.response.data);
+            console.log(error.response.status);
+            console.log(error.response.headers);
+          } else if (error.request) {
+            // The request was made but no response was received
+            // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+            // http.ClientRequest in node.js
+            console.log(error.request);
+          } else {
+            // Something happened in setting up the request that triggered an Error
+            console.log('Error', error.message);
+          }
+          console.log(error.config);
+          dispatch({ type: 'POST_FAILED' });
+        }
+      };
+      submitInvoice();
+    }
+  }, [postingStatus, selectedLineItems, subTotal, tax, grandTotal]);
 
   return (
     <Container>
@@ -175,33 +240,30 @@ export default function App() {
             <tbody>
               <tr>
                 <th scope="row">Subtotal</th>
-                <td>{`$${in$(subTotal).toFixed(2)}`}</td>
+                <td>{`$${subTotal}`}</td>
               </tr>
               <tr>
                 <th scope="row">Tax ({(SALESTAX * 100).toFixed(2) + '%'})</th>
-                <td>{`$${in$(tax).toFixed(2)}`}</td>
+                <td>{`$${tax}`}</td>
               </tr>
 
               <tr>
                 <th scope="row">Total</th>
-                <td>{`$${in$(grandTotal).toFixed(2)}`}</td>
+                <td>{`$${grandTotal}`}</td>
               </tr>
             </tbody>
           </Table>
 
-          <Form>
+          <Form onSubmit={onInvoiceSubmit}>
             <FormGroup row>
               <ButtonGroup>
                 <Button color="primary" onClick={openModal}>
                   Add Line Item(s)
                 </Button>
-                <Button
-                  color="primary"
-                  disabled={selectedLineItems.length === 0}
-                  type="submit"
-                >
-                  Submit Invoice
-                </Button>
+                <SubmitInvoiceButton
+                  selectedLineItemsLength={selectedLineItems.length}
+                  postingStatus={postingStatus}
+                />
               </ButtonGroup>
             </FormGroup>
           </Form>
