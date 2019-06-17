@@ -16,6 +16,7 @@ import { getItems, postInvoice } from './utils';
 import SelectLineItemsModal from './SelectLineItemsModal';
 import LineItemTable from './LineItemTable';
 import SubmitInvoiceButton from './SubmitInvoiceButton';
+import Toast from './Toast';
 
 /**
  * Determines if a given value is a valid quantity
@@ -26,6 +27,7 @@ function isValidQuantityValue(quantity) {
 }
 const initialState = {
   selectionModalStatus: 'closed',
+  toastStatus: 'closed',
   lineItems: [],
   postingStatus: 'ready',
 };
@@ -101,12 +103,19 @@ function reducer(state, action) {
           selectedDraft: false,
           quantity: 0,
         })),
+        toastStatus: 'opened.postsuccess',
         postingStatus: 'ready',
       };
     case 'POST_FAILED':
       return {
         ...state,
+        toastStatus: 'opened.postfail',
         postingStatus: 'ready',
+      };
+    case 'CLOSE_TOAST':
+      return {
+        ...state,
+        toastStatus: 'closed',
       };
     default:
       throw new Error();
@@ -116,7 +125,7 @@ function reducer(state, action) {
 const SALESTAX = 0.07;
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { lineItems, selectionModalStatus, postingStatus } = state;
+  const { lineItems, selectionModalStatus, postingStatus, toastStatus } = state;
   const [
     msSubTotal, // in Money object form
     msTaxableSubTotal, // in Money object form
@@ -132,6 +141,9 @@ export default function App() {
   }
   function closeModal() {
     dispatch({ type: 'DISCARD_SELECTION_DRAFT' });
+  }
+  function closeToast() {
+    dispatch({ type: 'CLOSE_TOAST' });
   }
   function onModalSubmit(e) {
     e.preventDefault();
@@ -224,6 +236,8 @@ export default function App() {
 
   return (
     <Container>
+      <Toast closeToast={closeToast} toastStatus={toastStatus} />
+
       <div className="py-5 text-center">
         <h1>Invoice Creator</h1>
       </div>

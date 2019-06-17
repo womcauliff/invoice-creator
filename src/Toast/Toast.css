@@ -1,0 +1,8 @@
+.toast-container {
+  position: relative;
+}
+.toast {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
