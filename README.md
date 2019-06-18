@@ -2,14 +2,7 @@
 
 This is a client-side application to create invoices.
 
-## Running the Application
-
-This application has been bootstrapped with [`create-react-app`](https://facebook.github.io/create-react-app/), so thus Node 8.10.0 or later is required on a local development machine to run this application.
-
-In the project directory, you can run: `npm start`
-
-This command runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+---
 
 ## Layout of the User Interface
 
@@ -49,6 +42,8 @@ I have hardcoded a sales tax of 7% for this application. This could be modified 
 
 For further development, the application could be modified to support freeform line items, without having to first create them in the backend API. This expansion of control to the user should coincide with development of features like user input validation and error messages, since there will be more ways that the data can be modified to put the application into an error state.
 
+---
+
 ## Technologies
 
 ### Money Calculations
@@ -68,3 +63,28 @@ In addition, the sourcecode for this application makes use of Hooks, a new featu
 ### Bootstrap
 
 This application relies on Bootstrap (v4), an opensource CSS library.
+
+---
+
+## Running the Application
+
+This application has been bootstrapped with [`create-react-app`](https://facebook.github.io/create-react-app/).
+
+To run this application in a local development environment, Node 8.10.0 or later is required.
+
+To install the application's dependencies, navigate to the the project directory in a terminal, and run the command: `npm install`
+
+Once the installation is complete, you can run: `npm start`
+
+This command runs the app in the development mode.<br>
+Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+
+### Production
+
+To view this application as it run in a production environment, the recommended approach would be to generate a production build, and use a static server like [serve](https://github.com/zeit/serve) view it.
+
+```
+npm run build
+npm install -g serve
+serve -s build
+```
