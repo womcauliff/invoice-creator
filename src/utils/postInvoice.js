@@ -44,6 +44,7 @@ async function postInvoice(selectedLineItems, tax, subtotal, total) {
       url: 'https://omni.fattmerchant.com/#/bill/',
     },
   });
+  console.log(JSON.stringify(response, null, 2));
   return response;
 }
 

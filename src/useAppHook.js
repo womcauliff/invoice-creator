@@ -1,6 +1,7 @@
 import { useReducer, useEffect } from 'react';
 import { $, in$ } from 'moneysafe';
-import { getItems, postInvoice } from './utils';
+// import { getItems, postInvoice } from './utils';
+import { getItems, postInvoice } from './utils/__mocks__';
 
 /**
  * Determines if a given value is a valid quantity
@@ -147,7 +148,6 @@ export default function useAppHook(SALESTAX) {
     const fetchLineItems = async () => {
       try {
         const response = await getItems();
-        console.log(response, response.data);
         dispatch({
           type: 'POPULATE_LINE_ITEMS',
           lineItemsAPI: response.data.data,
@@ -184,13 +184,7 @@ export default function useAppHook(SALESTAX) {
 
       const submitInvoice = async () => {
         try {
-          const response = await postInvoice(
-            selectedLineItems,
-            tax,
-            subTotal,
-            grandTotal
-          );
-          console.log(response, response.data);
+          await postInvoice(selectedLineItems, tax, subTotal, grandTotal);
           dispatch({ type: 'POST_SUCCEEDED' });
         } catch (error) {
           console.log(error);
